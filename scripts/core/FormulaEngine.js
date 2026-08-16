@@ -1,122 +1,97 @@
 "use strict";
-/* core/FormulaEngine.js — classe pure : tokenize, parse, évalue, valide */
 
-class FormulaError extends Error {}
-
+/**
+ * FormulaEngine - Évalue et valide les formules mathématiques
+ * Classe pure, sans dépendance DOM
+ */
 class FormulaEngine {
-  static ALLOWED = new Set([
-    "n",
-    "Input.COUNT", "Input.ADDRESS_START", "Input.ADDRESS_END",
-    "Output.COUNT", "Output.ADDRESS_START", "Output.ADDRESS_END"
-  ]);
-  constructor(){ this._cache = new Map(); }
 
-  tokenize(src){
-    const toks = []; let i = 0;
-    while (i < src.length){
-      const c = src[i];
-      if (/\s/.test(c)) { i++; continue; }
-      if (/[0-9]/.test(c)){
-        let j = i;
-        while (j < src.length && /[0-9.]/.test(src[j])) j++;
-        const raw = src.slice(i, j);
-        if ((raw.match(/\./g) || []).length > 1) throw new FormulaError(`Nombre invalide « ${raw} »`);
-        toks.push({ t:"num", v:parseFloat(raw) }); i = j; continue;
-      }
-      if (/[A-Za-z_]/.test(c)){
-        let j = i;
-        while (j < src.length && /[A-Za-z0-9_.]/.test(src[j])) j++;
-        let word = src.slice(i, j);
-        while (word.endsWith(".")) { word = word.slice(0, -1); j--; }
-        if (!FormulaEngine.ALLOWED.has(word))
-          throw new FormulaError(`Variable inconnue ou interdite « ${word} »`);
-        toks.push({ t:"var", v:word }); i = j; continue;
-      }
-      if ("+-*/%()".includes(c)) { toks.push({ t:c }); i++; continue; }
-      throw new FormulaError(`Caractère interdit « ${c} »`);
+    constructor() {
+        this.allowedVariables = new Set([
+            "n",
+            "Input.COUNT",
+            "Output.COUNT",
+            "Input.ADDRESS_START",
+            "Output.ADDRESS_START",
+            "Input.ADDRESS_END",
+            "Output.ADDRESS_END"
+        ]);
     }
-    return toks;
-  }
 
-  parse(src){
-    if (this._cache.has(src)) return this._cache.get(src);
-    const toks = this.tokenize(src);
-    if (!toks.length) throw new FormulaError("Formule vide");
-    let p = 0;
-    const peek = () => toks[p];
-    const eat = t => {
-      const tk = toks[p];
-      if (!tk || tk.t !== t) throw new FormulaError("Parenthèse fermante attendue");
-      p++; return tk;
-    };
-    const parseExpr = () => {
-      let n = parseTerm();
-      while (peek() && (peek().t === "+" || peek().t === "-")){
-        const op = toks[p++].t; n = { op, l:n, r:parseTerm() };
-      }
-      return n;
-    };
-    const parseTerm = () => {
-      let n = parseFactor();
-      while (peek() && ["*","/","%"].includes(peek().t)){
-        const op = toks[p++].t; n = { op, l:n, r:parseFactor() };
-      }
-      return n;
-    };
-    const parseFactor = () => {
-      const tk = peek();
-      if (!tk) throw new FormulaError("Fin de formule inattendue");
-      if (tk.t === "+"){ p++; return parseFactor(); }
-      if (tk.t === "-"){ p++; return { op:"neg", l:parseFactor() }; }
-      if (tk.t === "num"){ p++; return { num:tk.v }; }
-      if (tk.t === "var"){ p++; return { name:tk.v }; }
-      if (tk.t === "("){ p++; const e = parseExpr(); eat(")"); return e; }
-      throw new FormulaError(`Symbole inattendu « ${tk.t} »`);
-    };
-    const ast = parseExpr();
-    if (p < toks.length) throw new FormulaError("Symbole inattendu en fin de formule");
-    this._cache.set(src, ast);
-    return ast;
-  }
+    /**
+     * Évalue une formule avec un contexte de variables
+     * @param {string} formula - La formule à évaluer
+     * @param {object} context - Les variables disponibles
+     * @returns {number} Le résultat
+     */
+    evaluate(formula, context) {
+        try {
+            // Remplacer les variables par leurs valeurs
+            let expr = formula;
 
-  evaluate(src, vars){
-    const ast = this.parse(src);
-    const ev = node => {
-      if (node.num !== undefined) return node.num;
-      if (node.name !== undefined){
-        if (!(node.name in vars)) throw new FormulaError(`Variable non résolue « ${node.name} »`);
-        return vars[node.name];
-      }
-      if (node.op === "neg") return -ev(node.l);
-      const a = ev(node.l), b = ev(node.r);
-      switch (node.op){
-        case "+": return a + b;
-        case "-": return a - b;
-        case "*": return a * b;
-        case "/": if (b === 0) throw new FormulaError("Division par zéro"); return a / b;
-        case "%": if (b === 0) throw new FormulaError("Modulo par zéro"); return a % b;
-      }
-    };
-    return ev(ast);
-  }
+            for (const [key, value] of Object.entries(context)) {
+                expr = expr.replace(new RegExp(key.replace(/\./g, "\\."), "g"), value);
+            }
 
-  /* syntaxe + liste blanche + test n=0 + entier + positif */
-  validate(src, vars){
-    try {
-      const v = this.evaluate(src, vars);
-      if (!Number.isFinite(v))   return { ok:false, error:"Résultat non fini" };
-      if (!Number.isInteger(v))  return { ok:false, error:`Le résultat doit être entier (obtenu ${v})` };
-      if (v < 0)                 return { ok:false, error:`Le résultat doit être positif ou nul (obtenu ${v})` };
-      return { ok:true, value:v };
-    } catch(e){ return { ok:false, error:e.message }; }
-  }
+            // Vérifier qu'il ne reste pas de variables non résolues
+            if (/[a-zA-Z_]/.test(expr)) {
+                const match = expr.match(/[a-zA-Z_][a-zA-Z0-9_.]*/);
+                throw new Error(`Variable inconnue: ${match[0]}`);
+            }
 
-  collectRefs(src){
-    const found = new Set();
-    try {
-      const walk = n => { if (!n) return; if (n.name) found.add(n.name); walk(n.l); walk(n.r); };
-      walk(this.parse(src));
-    } catch(e){ /* syntaxe invalide : signalée par validate() */ }
-    return found;
-  }
+            // Évaluer l'expression de manière sécurisée
+            const result = this._safeEval(expr);
+
+            if (!Number.isFinite(result)) {
+                throw new Error("Résultat non fini");
+            }
+
+            return result;
+        } catch (e) {
+            throw new Error(`Erreur formule "${formula}": ${e.message}`);
+        }
+    }
+
+    /**
+     * Valide une formule (syntaxe + résultat entier positif)
+     * @param {string} formula
+     * @param {object} context
+     * @returns {object} { valid: boolean, error?: string, result?: number }
+     */
+    validate(formula, context) {
+        try {
+            const result = this.evaluate(formula, context);
+
+            if (!Number.isInteger(result)) {
+                return { valid: false, error: `Résultat non entier: ${result}` };
+            }
+
+            if (result < 0) {
+                return { valid: false, error: `Résultat négatif: ${result}` };
+            }
+
+            return { valid: true, result };
+        } catch (e) {
+            return { valid: false, error: e.message };
+        }
+    }
+
+    /**
+     * Évaluation sécurisée (pas de eval direct)
+     */
+    _safeEval(expr) {
+        // Autoriser uniquement: chiffres, opérateurs, parenthèses, espaces
+        const sanitized = expr.replace(/\s/g, "");
+
+        if (!/^[0-9+\-*/%().]+$/.test(sanitized)) {
+            throw new Error("Caractères invalides dans l'expression");
+        }
+
+        // Utiliser Function pour évaluer (plus sûr que eval)
+        try {
+            return new Function(`return (${sanitized});`)();
+        } catch (e) {
+            throw new Error("Expression invalide");
+        }
+    }
 }

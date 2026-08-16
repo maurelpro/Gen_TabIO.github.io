@@ -1,33 +1,69 @@
 "use strict";
-/* core/AddressGenerator.js — classe pure : génération des adresses finales */
 
+/**
+ * AddressGenerator - Génère les adresses à partir des items et de la config
+ * Classe pure, sans dépendance DOM
+ */
 class AddressGenerator {
-  constructor(engine){ this.engine = engine; }
 
-  /* 1) décalage STARTED · 2) X · 3) Y si hasY · 4) + started.x/y · 5) adresse */
-  generate(items, cfg, baseVars, catName){
-    const out = [];
-    for (let i = 0; i < items.length; i++){
-      const vars = { ...baseVars, n:i };
-      const off = this._check(this.engine.evaluate(cfg.formulaSTARTED, vars), "formulaSTARTED", i, catName);
-      const v2 = { ...baseVars, n: i + off };
-      const X = this._check(this.engine.evaluate(cfg.formulaX, v2), "formulaX", i, catName);
-      let address;
-      if (cfg.started.hasY){
-        const Y = this._check(this.engine.evaluate(cfg.formulaY, v2), "formulaY", i, catName);
-        let x = cfg.started.x + X, y = cfg.started.y + Y;
-        if (y >= 8){ x += Math.floor(y / 8); y %= 8; }
-        address = `${cfg.prefix}${x}.${y}`;
-      } else {
-        address = `${cfg.prefix}${cfg.started.x + X}`;
-      }
-      out.push({ index:i, name:items[i].name, comment:items[i].comment, address });
+    constructor(engine) {
+        this.engine = engine || new FormulaEngine();
     }
-    return out;
-  }
-  _check(v, f, n, cat){
-    if (!Number.isInteger(v) || v < 0)
-      throw new FormulaError(`${cat.toUpperCase()} · ${f} → valeur invalide pour n=${n} (${v})`);
-    return v;
-  }
+
+    /**
+     * Génère les adresses pour une liste d'items
+     * @param {Array} items - Liste d'ItemNmenique
+     * @param {object} config - Configuration { input: {...}, output: {...} }
+     * @returns {Array} Liste d'adresses
+     */
+    generate(items, config) {
+        const addresses = [];
+        const inputCount = items.filter(i => i.categorie === "input").length;
+        const outputCount = items.filter(i => i.categorie === "output").length;
+
+        const context = {
+            "n": 0,
+            "Input.COUNT": inputCount,
+            "Output.COUNT": outputCount,
+            "Input.ADDRESS_START": config.input.startX,
+            "Output.ADDRESS_START": config.output.startX,
+            "Input.ADDRESS_END": inputCount - 1,
+            "Output.ADDRESS_END": outputCount - 1
+        };
+
+        let inputIndex = 0;
+        let outputIndex = 0;
+
+        for (const item of items) {
+            const cfg = item.categorie === "input" ? config.input : config.output;
+            const n = item.categorie === "input" ? inputIndex : outputIndex;
+
+            context["n"] = n;
+
+            try {
+                const started = this.engine.evaluate(cfg.formulaSTARTED, context);
+                const x = this.engine.evaluate(cfg.formulaX, context);
+                const y = this.engine.evaluate(cfg.formulaY, context);
+
+                const finalX = cfg.startX + started + x;
+                const finalY = cfg.startY + y;
+
+                let address;
+                if (cfg.format === "xy") {
+                    address = `${cfg.prefix}${finalX}.${finalY}`;
+                } else {
+                    address = `${cfg.prefix}${finalX}`;
+                }
+
+                addresses.push(address);
+            } catch (e) {
+                addresses.push(`ERR(${item.nom})`);
+            }
+
+            if (item.categorie === "input") inputIndex++;
+            else outputIndex++;
+        }
+
+        return addresses;
+    }
 }

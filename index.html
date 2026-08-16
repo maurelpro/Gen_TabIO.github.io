@@ -1,320 +1,193 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADRESSIO — Atelier d'adressage E/S</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='7' height='16' fill='%234da3ff'/><rect x='9' width='7' height='16' fill='%233ecf6f'/></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADRESSIO - Générateur d'adresses PLC</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<div class="app">
 
-  <!-- ═════════ BARRE SUPÉRIEURE ═════════ -->
-  <header class="topbar">
+<!-- Barre supérieure -->
+<header class="topbar">
     <div class="brand">
-      <div class="brand-mark"><span>E</span><span>Q</span></div>
-      <div>
-        <h1>ADRESS<em>IO</em></h1>
-        <small>Atelier d'adressage E/S · formules · export</small>
-      </div>
+        <span class="brand-logo">A</span>
+        <span class="brand-title">ADRESSIO</span>
     </div>
-    <div class="top-note">ZONE 1 · ZONE 2 · ZONE 3</div>
-  </header>
-
-  <!-- ═════════ ESPACE DE TRAVAIL ═════════ -->
-  <main class="workspace" id="workspace">
-
-    <!-- ─── ZONE 1 · INPUT / OUTPUT ─── -->
-    <section class="pane" id="pane1">
-      <div class="pane-head">
-        <span class="zbadge">Z1</span>
-        <h2>Entrées / Sorties</h2>
-        <div class="pane-tools">
-          <span class="hint">clic sur [INPUT] / [OUTPUT] pour basculer</span>
-          <button class="ioswitch" id="ioSwitch" title="Basculer la vue INPUT / OUTPUT" aria-pressed="false">
-            <span class="lab lab-in">INPUT</span>
-            <span class="thumb"></span>
-            <span class="lab lab-out">OUTPUT</span>
-          </button>
-        </div>
-      </div>
-      <div class="editor">
-        <div class="gutter"><div class="gut-in" id="gutIn"></div></div>
-        <div class="edwrap">
-          <pre class="hl" id="hl" aria-hidden="true"></pre>
-          <textarea id="src" spellcheck="false" wrap="off" autocomplete="off"
-            aria-label="Source INPUT / OUTPUT"></textarea>
-        </div>
-      </div>
-      <div class="pane-foot">
-        <span id="z1stat"></span>
-        <span style="margin-left:auto">format&nbsp;: <code style="font-family:'JetBrains Mono'">name : commentaire</code> — <code style="font-family:'JetBrains Mono'">#</code> accepté</span>
-      </div>
-    </section>
-
-    <div class="splitter split-v" id="splitV" role="separator" aria-orientation="vertical"
-         aria-label="Redimensionner la zone 1" tabindex="0"><span class="bar"></span></div>
-
-    <div class="rightcol" id="rightcol">
-
-      <!-- ─── ZONE 2 · GÉNÉRATEUR D'ADRESSES ─── -->
-      <section class="pane" id="pane2">
-        <div class="pane-head">
-          <span class="zbadge">Z2</span>
-          <h2>Générateur d'adresses</h2>
-          <div class="pane-tools">
-            <span class="range-txt" id="z2range"></span>
-            <button class="help-btn" id="btnHelp" title="Aide détaillée du moteur de formules" aria-label="Aide">?</button>
-          </div>
-        </div>
-        <div class="z2-body">
-          <div class="addr-view" id="addrView"></div>
-
-          <div class="cfg">
-            <div class="cfg-head"><b>CONFIGURATION</b></div>
-            <div class="cfg-cols">
-
-              <fieldset class="cat cat-in" data-cat="input">
-                <legend>INPUT</legend>
-                <div class="cfg-part">
-                  <div class="part-label">1 · Préfixe &amp; Format</div>
-                  <div class="rowA">
-                    <label class="fld"><span class="fld-name">Préfixe</span>
-                      <input type="text" data-f="prefix" value="E" maxlength="3"></label>
-                    <label class="fld"><span class="fld-name">Format d'adresse</span>
-                      <span class="fmtsw"><input type="checkbox" data-f="hasy" checked>
-                        <span class="fmt-track"><span class="ft-a">x.y</span><span class="ft-b">y</span><span class="ft-thumb"></span></span>
-                      </span></label>
-                  </div>
-                </div>
-                <div class="cfg-part">
-                  <div class="part-label">2 · Started Address</div>
-                  <div class="rowB">
-                    <label class="fld"><span class="fld-name">X</span>
-                      <input type="number" data-f="sx" value="0" min="0"></label>
-                    <label class="fld" data-wrap="sy"><span class="fld-name">Y</span>
-                      <input type="number" data-f="sy" value="0" min="0"></label>
-                  </div>
-                </div>
-                <div class="cfg-part">
-                  <div class="part-label">3 · Formules</div>
-                  <label class="fld"><span class="fld-name">formulaSTARTED · décalage <i class="led" data-led="formulaSTARTED"></i></span>
-                    <span class="fx-wrap"><code class="fx-hl"></code>
-                      <input type="text" data-f="formulaSTARTED" value="0" spellcheck="false" autocomplete="off"></span>
-                    <span class="fld-err" data-err="formulaSTARTED"></span></label>
-                  <div class="rowB">
-                    <label class="fld"><span class="fld-name">formulaX <i class="led" data-led="formulaX"></i></span>
-                      <span class="fx-wrap"><code class="fx-hl"></code>
-                        <input type="text" data-f="formulaX" value="(n - (n % 8)) / 8" spellcheck="false" autocomplete="off"></span>
-                      <span class="fld-err" data-err="formulaX"></span></label>
-                    <label class="fld" data-wrap="fy"><span class="fld-name">formulaY <i class="led" data-led="formulaY"></i></span>
-                      <span class="fx-wrap"><code class="fx-hl"></code>
-                        <input type="text" data-f="formulaY" value="n % 8" spellcheck="false" autocomplete="off"></span>
-                      <span class="fld-err" data-err="formulaY"></span></label>
-                  </div>
-                </div>
-              </fieldset>
-
-              <fieldset class="cat cat-out" data-cat="output">
-                <legend>OUTPUT</legend>
-                <div class="cfg-part">
-                  <div class="part-label">1 · Préfixe &amp; Format</div>
-                  <div class="rowA">
-                    <label class="fld"><span class="fld-name">Préfixe</span>
-                      <input type="text" data-f="prefix" value="Q" maxlength="3"></label>
-                    <label class="fld"><span class="fld-name">Format d'adresse</span>
-                      <span class="fmtsw"><input type="checkbox" data-f="hasy" checked>
-                        <span class="fmt-track"><span class="ft-a">x.y</span><span class="ft-b">y</span><span class="ft-thumb"></span></span>
-                      </span></label>
-                  </div>
-                </div>
-                <div class="cfg-part">
-                  <div class="part-label">2 · Started Address</div>
-                  <div class="rowB">
-                    <label class="fld"><span class="fld-name">X</span>
-                      <input type="number" data-f="sx" value="0" min="0"></label>
-                    <label class="fld" data-wrap="sy"><span class="fld-name">Y</span>
-                      <input type="number" data-f="sy" value="0" min="0"></label>
-                  </div>
-                </div>
-                <div class="cfg-part">
-                  <div class="part-label">3 · Formules</div>
-                  <label class="fld"><span class="fld-name">formulaSTARTED · décalage <i class="led" data-led="formulaSTARTED"></i></span>
-                    <span class="fx-wrap"><code class="fx-hl"></code>
-                      <input type="text" data-f="formulaSTARTED" value="0" spellcheck="false" autocomplete="off"></span>
-                    <span class="fld-err" data-err="formulaSTARTED"></span></label>
-                  <div class="rowB">
-                    <label class="fld"><span class="fld-name">formulaX <i class="led" data-led="formulaX"></i></span>
-                      <span class="fx-wrap"><code class="fx-hl"></code>
-                        <input type="text" data-f="formulaX" value="(n - (n % 8)) / 8" spellcheck="false" autocomplete="off"></span>
-                      <span class="fld-err" data-err="formulaX"></span></label>
-                    <label class="fld" data-wrap="fy"><span class="fld-name">formulaY <i class="led" data-led="formulaY"></i></span>
-                      <span class="fx-wrap"><code class="fx-hl"></code>
-                        <input type="text" data-f="formulaY" value="n % 8" spellcheck="false" autocomplete="off"></span>
-                      <span class="fld-err" data-err="formulaY"></span></label>
-                  </div>
-                </div>
-              </fieldset>
-
-            </div>
-            <div class="cfg-actions">
-              <button class="btn btn-amber" id="btnUpdate">Mettre à jour</button>
-              <span id="cfgStatus"></span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div class="splitter split-h" id="splitH" role="separator" aria-orientation="horizontal"
-           aria-label="Redimensionner la zone 2" tabindex="0"><span class="bar"></span></div>
-
-      <!-- ─── ZONE 3 · EXPORT ─── -->
-      <section class="pane" id="pane3">
-        <div class="pane-head">
-          <span class="zbadge">Z3</span>
-          <h2>Export</h2>
-          <div class="pane-tools">
-            <button class="btn btn-sm btn-icon" id="btnEye" title="Afficher / masquer l'aperçu" aria-pressed="false">
-              <svg id="icoEye" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/>
-              </svg>
-              <svg id="icoEyeOff" style="display:none" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/><line x1="4" y1="3" x2="20" y2="21"/>
-              </svg>
-              <span id="eyeLab">Aperçu</span>
-            </button>
-            <select class="fmt-select" id="fmtSelect" title="Automate / format cible"></select>
-            <button class="btn btn-sm" id="btnCopy">Copier</button>
-            <button class="btn btn-sm btn-coral" id="btnDl">Télécharger</button>
-          </div>
-        </div>
-        <pre class="export-view" id="exportView" hidden></pre>
-        <div class="pane-foot"><span id="z3foot">—</span></div>
-      </section>
-
+    <div class="topbar-actions">
+        <button id="btnHelp" class="btn-icon" title="Aide">?</button>
     </div>
-  </main>
+</header>
+
+<!-- Conteneur principal -->
+<div class="main-container">
+
+    <!-- ZONE 1: Éditeur Input/Output -->
+    <div class="zone zone-1" id="zone1">
+        <div class="zone-header">
+            <h2>Zone 1 — Entrées / Sorties</h2>
+            <div class="zone-actions">
+                <button id="btnValidate" class="btn btn-primary">✓ Valider</button>
+                <button id="btnToggleView" class="btn btn-secondary">Basculer Vue</button>
+            </div>
+        </div>
+        <div class="zone-body">
+            <textarea id="inputSource" spellcheck="false" placeholder="[INPUT]&lt;br&gt;nom1 : commentaire&lt;br&gt;nom2 : commentaire&lt;br&gt;&lt;br&gt;[OUTPUT]&lt;br&gt;nom3 : commentaire"></textarea>
+        </div>
+    </div>
+
+    <!-- Splitter vertical -->
+    <div class="splitter splitter-v" id="splitterV"></div>
+
+    <!-- ZONE 2: Générateur d'adresses -->
+    <div class="zone zone-2" id="zone2">
+        <div class="zone-header">
+            <h2>Zone 2 — Générateur d'adresses</h2>
+        </div>
+        <div class="zone-body zone2-body">
+            <div class="address-list" id="addressList"></div>
+            <div class="splitter splitter-h" id="splitterH"></div>
+            <div class="config-panel" id="configPanel">
+                <div class="config-section">
+                    <h3>1. Préfixe &amp; Format</h3>
+                    <div class="config-grid">
+                        <label>Préfixe Input
+                            <input type="text" id="prefixInput" value="I" maxlength="2">
+                        </label>
+                        <label>Préfixe Output
+                            <input type="text" id="prefixOutput" value="Q" maxlength="2">
+                        </label>
+                        <label>Format Input
+                            <select id="formatInput">
+                                <option value="xy">x.y (bit)</option>
+                                <option value="y">y (byte)</option>
+                            </select>
+                        </label>
+                        <label>Format Output
+                            <select id="formatOutput">
+                                <option value="xy">x.y (bit)</option>
+                                <option value="y">y (byte)</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <h3>2. Adresse de départ</h3>
+                    <div class="config-grid">
+                        <label>Input X
+                            <input type="number" id="startInputX" value="0" min="0">
+                        </label>
+                        <label>Input Y
+                            <input type="number" id="startInputY" value="0" min="0">
+                        </label>
+                        <label>Output X
+                            <input type="number" id="startOutputX" value="0" min="0">
+                        </label>
+                        <label>Output Y
+                            <input type="number" id="startOutputY" value="0" min="0">
+                        </label>
+                    </div>
+                </div>
+                <div class="config-section">
+                    <h3>3. Formules</h3>
+                    <div class="config-grid">
+                        <label>STARTED
+                            <input type="text" id="formulaStarted" value="0" class="formula-input">
+                        </label>
+                        <label>X
+                            <input type="text" id="formulaX" value="n" class="formula-input">
+                        </label>
+                        <label>Y
+                            <input type="text" id="formulaY" value="0" class="formula-input">
+                        </label>
+                    </div>
+                    <div class="formula-help">
+                        <span>Variables: n, Input.COUNT, Output.COUNT, Input.ADDRESS_START, Output.ADDRESS_START</span>
+                    </div>
+                </div>
+                <button id="btnUpdateAddresses" class="btn btn-primary btn-block">⟳ Mettre à jour</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Splitter horizontal -->
+    <div class="splitter splitter-h2" id="splitterH2"></div>
+
+    <!-- ZONE 3: Export -->
+    <div class="zone zone-3" id="zone3">
+        <div class="zone-header">
+            <h2>Zone 3 — Export</h2>
+            <div class="zone-actions">
+                <button id="btnTogglePreview" class="btn btn-secondary">👁 Aperçu</button>
+            </div>
+        </div>
+        <div class="zone-body">
+            <div class="export-controls">
+                <select id="selectAutomate">
+                    <option value="">-- Choisir un automate --</option>
+                </select>
+                <select id="selectFormat">
+                    <option value="">-- Choisir un format --</option>
+                </select>
+                <button id="btnDownload" class="btn btn-primary">⬇ Télécharger</button>
+            </div>
+            <pre id="exportPreview" class="export-preview" style="display:none;"></pre>
+        </div>
+    </div>
+
 </div>
 
-<!-- ═════════ MODALE AIDE — MOTEUR DE FORMULES ═════════ -->
-<div class="modal-overlay" id="helpModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
-    <div class="modal-head">
-      <h3 id="helpTitle">Aide — Moteur de formules</h3>
-      <button class="modal-x" id="helpClose" aria-label="Fermer">×</button>
+<!-- Modale aide -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Aide — ADRESSIO</h2>
+            <button id="btnCloseModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <h3>Format de saisie</h3>
+            <pre>[INPUT]
+nom_variable : commentaire
+autre_variable : commentaire
+
+[OUTPUT]
+sortie_1 : commentaire</pre>
+            <h3>Variables disponibles dans les formules</h3>
+            <ul>
+                <li><code>n</code> — index courant (0, 1, 2...)</li>
+                <li><code>Input.COUNT</code> — nombre d'inputs</li>
+                <li><code>Output.COUNT</code> — nombre d'outputs</li>
+                <li><code>Input.ADDRESS_START</code> — adresse de départ input</li>
+                <li><code>Output.ADDRESS_START</code> — adresse de départ output</li>
+            </ul>
+            <h3>Opérateurs</h3>
+            <ul>
+                <li><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code></li>
+                <li><code>(</code> <code>)</code> pour grouper</li>
+            </ul>
+            <h3>Exemples de formules</h3>
+            <ul>
+                <li><code>n</code> — séquentiel simple</li>
+                <li><code>n % 8</code> — position dans l'octet</li>
+                <li><code>Math.floor(n / 8)</code> — numéro d'octet</li>
+                <li><code>Input.COUNT + n</code> — décalé après inputs</li>
+            </ul>
+        </div>
     </div>
-    <div class="modal-body">
-
-      <section>
-        <h4>Principe</h4>
-        <p>Chaque élément déclaré en Zone 1 reçoit une adresse calculée à partir de son index <code>n</code>
-        (0, 1, 2 …) et des formules de la configuration. Le moteur n'autorise que des
-        <strong>résultats entiers, positifs ou nuls</strong>, et travaille uniquement sur
-        <code class="vin">Input</code> et <code class="vout">Output</code> — jamais de Mémoire.</p>
-      </section>
-
-      <section>
-        <h4>Opérateurs autorisés</h4>
-        <table>
-          <tr><td style="width:70px"><code class="op">+</code></td><td>Addition</td></tr>
-          <tr><td><code class="op">-</code></td><td>Soustraction (le signe unaire est accepté)</td></tr>
-          <tr><td><code class="op">*</code></td><td>Multiplication</td></tr>
-          <tr><td><code class="op">/</code></td><td>Division — le résultat final doit être un entier</td></tr>
-          <tr><td><code class="op">%</code></td><td>Modulo — reste de la division entière</td></tr>
-          <tr><td><code class="op">( )</code></td><td>Parenthèses — priorité d'évaluation</td></tr>
-        </table>
-      </section>
-
-      <section>
-        <h4>Variables autorisées</h4>
-        <table>
-          <tr><th>Variable</th><th>Type</th><th>Description</th></tr>
-          <tr><td><code>n</code></td><td>int</td><td>Index courant de l'élément (commence à 0)</td></tr>
-          <tr><td><code class="vin">Input.COUNT</code></td><td>int</td><td>Nombre d'entrées déclarées en Zone 1</td></tr>
-          <tr><td><code class="vin">Input.ADDRESS_START</code></td><td>int</td><td>Adresse de départ des entrées, encodée « à plat » : x·8 + y en format x.y, ou x en format y</td></tr>
-          <tr><td><code class="vin">Input.ADDRESS_END</code></td><td>int</td><td>Dernière adresse générée des entrées (encodage à plat)</td></tr>
-          <tr><td><code class="vout">Output.COUNT</code></td><td>int</td><td>Nombre de sorties déclarées en Zone 1</td></tr>
-          <tr><td><code class="vout">Output.ADDRESS_START</code></td><td>int</td><td>Adresse de départ des sorties (encodage à plat)</td></tr>
-          <tr><td><code class="vout">Output.ADDRESS_END</code></td><td>int</td><td>Dernière adresse générée des sorties (encodage à plat)</td></tr>
-        </table>
-        <p class="note">Toute autre variable est refusée à l'analyse syntaxique et signalée sous le champ concerné.</p>
-      </section>
-
-      <section>
-        <h4>Formats d'adresse</h4>
-        <table>
-          <tr><td style="width:90px"><code>Zx.y</code></td><td>ex. <code>E0.3</code>, <code>M10.5</code> — préfixe + octet + bit</td></tr>
-          <tr><td><code>Zy</code></td><td>ex. <code>M10</code>, <code>M11</code> — préfixe + valeur seule</td></tr>
-        </table>
-        <p class="note">Z est le préfixe configurable (E, Q, M …). Si y atteint 8, la retenue est reportée
-        automatiquement sur x : E0.9 devient E1.1.</p>
-      </section>
-
-      <section>
-        <h4>Processus de génération — pour chaque index n</h4>
-        <ol>
-          <li>Calcul du décalage : <code>offset = formulaSTARTED(n)</code></li>
-          <li>Index effectif : <code>n' = n + offset</code></li>
-          <li>Calcul de <code>X = formulaX(n')</code></li>
-          <li>Calcul de <code>Y = formulaY(n')</code> — uniquement si le format x.y est actif</li>
-          <li>Addition de la Started Address : <code>x = Started.X + X</code> et <code>y = Started.Y + Y</code></li>
-          <li>Construction de l'adresse finale : <code>préfixe + x.y</code> ou <code>préfixe + x</code></li>
-        </ol>
-      </section>
-
-      <section>
-        <h4>Règles de validation</h4>
-        <ul>
-          <li>Syntaxe vérifiée : seuls les opérateurs, parenthèses et variables de la liste blanche sont acceptés</li>
-          <li>Chaque formule est testée avec <code>n = 0</code></li>
-          <li>Le résultat doit être un entier</li>
-          <li>Les valeurs négatives sont refusées</li>
-          <li>Les références circulaires via ADDRESS_END sont détectées</li>
-          <li>Un message d'erreur clair s'affiche sous le champ concerné</li>
-        </ul>
-      </section>
-
-      <section>
-        <h4>Exemple</h4>
-        <pre class="mcode">formulaSTARTED = "0"
-formulaX       = "(n - (n % 8)) / 8"
-formulaY       = "n % 8"
-
-n = 0 → E0.0      n = 1 → E0.1      n = 7 → E0.7
-n = 8 → E1.0      n = 9 → E1.1
-
-Astuce : avec formulaSTARTED = "Input.COUNT" sur la catégorie Output,
-les sorties démarrent juste après la dernière entrée.</pre>
-      </section>
-
-      <section>
-        <h4>Structure de la configuration</h4>
-        <pre class="mcode">{
-  prefix: "E",
-  started: { x: 0, y: 0, hasY: true },   // Started Address
-  formulaSTARTED: "0",
-  formulaX: "(n - (n % 8)) / 8",
-  formulaY: "n % 8"
-}</pre>
-      </section>
-
-    </div>
-    <div class="modal-foot"><button class="btn" id="helpOk">Fermer</button></div>
-  </div>
 </div>
 
-<!-- Ordre de chargement : core -> helpers -> ui -> App -->
+<!-- Scripts core -->
 <script src="scripts/core/FormulaEngine.js"></script>
 <script src="scripts/core/FormulaConfig.js"></script>
 <script src="scripts/core/AddressGenerator.js"></script>
+<script src="scripts/core/ItemNmenique.js"></script>
+<script src="scripts/core/ExportManager.js"></script>
+<!-- Scripts UI -->
 <script src="scripts/ui/helpers.js"></script>
 <script src="scripts/ui/Zone1_ui.js"></script>
 <script src="scripts/ui/Zone2_ui.js"></script>
 <script src="scripts/ui/Zone3_ui.js"></script>
 <script src="scripts/ui/App_ui.js"></script>
+
 </body>
 </html>

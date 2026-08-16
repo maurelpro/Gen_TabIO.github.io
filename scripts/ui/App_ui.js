@@ -1,162 +1,166 @@
 "use strict";
-/* ui/App_ui.js — orchestration, splitters, état global + démarrage */
 
-const DEFAULT_SRC =
-`# Cartographie E/S — cellule de perçage
-[INPUT]
-bp_start : Bouton-poussoir marche
-bp_stop : Bouton-poussoir arrêt (NC)
-cap_pos_h : Capteur position haute
-cap_pos_b : Capteur position basse
-relais_th : Relais thermique moteur
-sel_mode : Sélecteur auto / manuel
-
-
-[OUTPUT]
-km1 : Contacteur moteur principal
-ev_circ_a : Électrovanne circuit A
-voy_def : Voyant défaut (rouge)
-klaxon : Avertisseur sonore`;
-
+/**
+ * App_ui - Orchestration principale
+ */
 class App_ui {
-  constructor(){
-    this.engine = new FormulaEngine();
-    this.config = new FormulaConfig(this.engine);
-    this.generator = new AddressGenerator(this.engine);
-    this.rows = { input:[], output:[] };
-    this.stale = false;
-  }
 
-  init(){
-    this.z1 = new Zone1_ui(this);
-    this.z2 = new Zone2_ui(this);
-    this.z3 = new Zone3_ui(this);
-    $("#src").value = DEFAULT_SRC;
-    this.setupSplitters();
-    this.z1.render();
-    this.z2.validateLive();
-    this.applyAndRegenerate(this.z2.readAll(), { silent:true });
-  }
+    constructor() {
+        this.engine = new FormulaEngine();
+        this.generator = new AddressGenerator(this.engine);
+        this.exportManager = new ExportManager();
 
-  onSourceChanged(){
-    this.config.setCounts(this.z1.model.input.items.length, this.z1.model.output.items.length);
-    this.markStale();
-  }
-  markStale(){
-    this.stale = true;
-    this.z2.setStatus("Données modifiées — cliquez sur « Mettre à jour »", "stale");
-  }
-  ensureFresh(){
-    if (this.stale) this.applyAndRegenerate(this.z2.readAll(), { silent:true });
-  }
-  previewVars(cfgs){
-    this.config.setCounts(this.z1.model.input.items.length, this.z1.model.output.items.length);
-    return this.config.previewVars(cfgs);
-  }
+        this.zone1 = new Zone1_ui();
+        this.zone2 = new Zone2_ui();
+        this.zone3 = new Zone3_ui(this.exportManager);
 
-  applyAndRegenerate(cfgs, opts = {}){
-    this.config.apply("input", cfgs.input);
-    this.config.apply("output", cfgs.output);
-    this.config.setCounts(this.z1.model.input.items.length, this.z1.model.output.items.length);
-    if (!this.z2.validateLive()){
-      if (!opts.silent) this.z2.setStatus("ERREUR — formules invalides, corrigez les champs signalés", "err");
-      return false;
+        this.items = [];
+
+        this._bindEvents();
+        this._initSplitters();
     }
-    return this.regenerate(opts);
-  }
 
-  regenerate(opts = {}){
-    try {
-      const vars = this.config.buildVars();
-      this.rows = {
-        input:  this.generator.generate(this.z1.model.input.items,  this.config.input,  vars, "input"),
-        output: this.generator.generate(this.z1.model.output.items, this.config.output, vars, "output")
-      };
-      this.z2.render(this.rows);
-      this.z3.refresh();
-      this.stale = false;
-      const sum = arr => arr.length ? `${arr[0].address} → ${arr[arr.length-1].address}` : "—";
-      this.z2.setStatus(`VALIDE — INPUT ${sum(this.rows.input)} · OUTPUT ${sum(this.rows.output)}`);
-      $("#z2range").textContent = `${this.rows.input.length} E · ${this.rows.output.length} S`;
-      return true;
-    } catch(e){
-      this.z2.setStatus("ERREUR — " + e.message, "err");
-      return false;
+    _bindEvents() {
+        // Zone 1
+        this.zone1.onValidate = () => this._validateAndGenerate();
+        this.zone1.onToggleView = () => this._toggleView();
+
+        // Zone 2
+        this.zone2.onUpdate = () => this._updateAddresses();
+
+        // Modale aide
+        $("#btnHelp").addEventListener("click", () => {
+            $("#helpModal").classList.add("active");
+        });
+
+        $("#btnCloseModal").addEventListener("click", () => {
+            $("#helpModal").classList.remove("active");
+        });
+
+        $("#helpModal").addEventListener("click", (e) => {
+            if (e.target === $("#helpModal")) {
+                $("#helpModal").classList.remove("active");
+            }
+        });
     }
-  }
 
-  setupSplitters(){
-    const ws = $("#workspace"), rc = $("#rightcol"), p1 = $("#pane1"), p2 = $("#pane2");
+    _validateAndGenerate() {
+        try {
+            const source = this.zone1.getSource();
+            const items = this.zone1.parseSource(source);
 
-    /* défaut : Zone 1 = 44 %, Zone 2 remplit tout le reste */
-    const defaults = () => {
-      p1.style.width = Math.round(ws.clientWidth * 0.44) + "px";
-      p2.style.flex = "";       // retour au remplissage automatique
-      p2.style.height = "";
-    };
-    defaults();
+            if (items.length === 0) {
+                alert("Aucun item valide trouvé. Vérifiez le format.");
+                return;
+            }
 
-    const drag = (el, vert) => {
-      el.addEventListener("pointerdown", e => {
-        if (vert && window.innerWidth <= 960) return;
-        e.preventDefault();
-        el.setPointerCapture(e.pointerId);
-        document.body.classList.add("dragging", vert ? "drag-v" : "drag-h");
+            this.items = items;
+            this._updateAddresses();
+            this.zone3.updateItems(items);
 
-        const move = ev => {
-          if (vert){
-            const r = ws.getBoundingClientRect();
-            p1.style.width = Math.min(Math.max(ev.clientX - r.left, 300), r.width - 380) + "px";
-          } else {
-            const r2 = p2.getBoundingClientRect();
-            const p3 = $("#pane3"), sh = $("#splitH");
-            const maxH = rc.clientHeight - p3.offsetHeight - sh.offsetHeight - 4;
-            const h = Math.min(Math.max(ev.clientY - r2.top, 150), Math.max(150, maxH));
-            p2.style.flex = "none";        // hauteur fixe pendant le drag
-            p2.style.height = h + "px";
-          }
-        };
-        const up = () => {
-          el.removeEventListener("pointermove", move);
-          document.body.classList.remove("dragging","drag-v","drag-h");
-          try { el.releasePointerCapture(e.pointerId); } catch(_){}
-        };
-        el.addEventListener("pointermove", move);
-        el.addEventListener("pointerup", up, { once:true });
-        el.addEventListener("pointercancel", up, { once:true });
-      });
-
-      el.addEventListener("dblclick", defaults);   // double-clic = remplissage auto
-
-      el.addEventListener("keydown", e => {
-        const s = 24;
-        if (vert && e.key === "ArrowLeft")  { p1.style.width  = (p1.offsetWidth - s) + "px"; e.preventDefault(); }
-        if (vert && e.key === "ArrowRight") { p1.style.width  = (p1.offsetWidth + s) + "px"; e.preventDefault(); }
-        if (!vert && (e.key === "ArrowUp" || e.key === "ArrowDown")){
-          const p3 = $("#pane3"), sh = $("#splitH");
-          const maxH = rc.clientHeight - p3.offsetHeight - sh.offsetHeight - 4;
-          const h = Math.min(Math.max(p2.offsetHeight + (e.key === "ArrowDown" ? s : -s), 150), Math.max(150, maxH));
-          p2.style.flex = "none";
-          p2.style.height = h + "px";
-          e.preventDefault();
+        } catch (e) {
+            alert(`Erreur de validation: ${e.message}`);
         }
-      });
-    };
+    }
 
-    drag($("#splitV"), true);
-    drag($("#splitH"), false);
+    _updateAddresses() {
+        if (this.items.length === 0) {
+            alert("Validez d'abord la Zone 1.");
+            return;
+        }
 
-    window.addEventListener("resize", () => {
-      if (p1.offsetWidth > ws.clientWidth - 380)
-        p1.style.width = Math.max(300, ws.clientWidth - 380) + "px";
-      if (p2.style.flex === "none"){   // re-borne la hauteur fixe si la fenêtre change
-        const p3 = $("#pane3"), sh = $("#splitH");
-        const maxH = rc.clientHeight - p3.offsetHeight - sh.offsetHeight - 4;
-        if (p2.offsetHeight > maxH) p2.style.height = Math.max(150, maxH) + "px";
-      }
-    });
-  }
+        try {
+            const config = this.zone2.getConfig();
+            const addresses = this.generator.generate(this.items, config);
+
+            // Mettre à jour les adresses dans les items
+            this.items.forEach((item, index) => {
+                item.adresse = addresses[index];
+            });
+
+            this.zone2.displayAddresses(this.items, addresses);
+            this.zone3.updateItems(this.items);
+
+        } catch (e) {
+            alert(`Erreur de génération: ${e.message}`);
+        }
+    }
+
+    _toggleView() {
+        const source = this.zone1.getSource();
+        const lines = source.split("\n");
+        const inputLines = [];
+        const outputLines = [];
+        let currentSection = null;
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed === "[INPUT]") {
+                currentSection = "input";
+                continue;
+            }
+            if (trimmed === "[OUTPUT]") {
+                currentSection = "output";
+                continue;
+            }
+            if (currentSection === "input") inputLines.push(line);
+            if (currentSection === "output") outputLines.push(line);
+        }
+
+        const newSource = "[INPUT]\n" + inputLines.join("\n") + "\n\n[OUTPUT]\n" + outputLines.join("\n");
+        this.zone1.setSource(newSource);
+    }
+
+    _initSplitters() {
+        // Splitter vertical entre Zone 1 et Zone 2
+        this._makeDraggable($("#splitterV"), "vertical");
+        // Splitter horizontal dans Zone 2
+        this._makeDraggable($("#splitterH"), "horizontal");
+        // Splitter horizontal entre Zone 2 et Zone 3
+        this._makeDraggable($("#splitterH2"), "horizontal");
+    }
+
+    _makeDraggable(splitter, direction) {
+        let startPos = 0;
+        let startSize = 0;
+        let target = null;
+
+        splitter.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            startPos = direction === "vertical" ? e.clientX : e.clientY;
+
+            if (splitter.id === "splitterV") {
+                target = $(".zone-1");
+                startSize = target.offsetHeight;
+            } else if (splitter.id === "splitterH") {
+                target = $(".config-panel");
+                startSize = target.offsetHeight;
+            } else if (splitter.id === "splitterH2") {
+                target = $(".zone-2");
+                startSize = target.offsetHeight;
+            }
+
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+        });
+
+        const onMove = (e) => {
+            if (!target) return;
+            const currentPos = direction === "vertical" ? e.clientY : e.clientY;
+            const diff = currentPos - startPos;
+            const newSize = Math.max(50, startSize + diff);
+            target.style.height = newSize + "px";
+        };
+
+        const onUp = () => {
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+            target = null;
+        };
+    }
 }
 
-/* démarrage */
-new App_ui().init();
+// Démarrage
+document.addEventListener("DOMContentLoaded", () => {
+    window.app = new App_ui();
+});

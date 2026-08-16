@@ -1,112 +1,56 @@
-# PLC Address Generator
+# ADRESSIO — Générateur d'adresses PLC
 
-## Présentation
+Outil web de cartographie d'adresses pour automates programmables.
 
-**PLC Address Generator** est un moteur JavaScript indépendant de l’interface utilisateur, conçu pour générer automatiquement des adresses PLC à partir de formules configurables.
+## Fonctionnalités
 
-L’objectif est de simplifier la création d’adresses telles que `E0.0`, `E0.1`, `E1.0`, `M10.5` ou `Q20`, sans avoir à définir manuellement chaque adresse.
+- **Zone 1** : Éditeur Input/Output avec format texte simple
+- **Zone 2** : Générateur d'adresses avec formules mathématiques configurables
+- **Zone 3** : Export vers 6 automates industriels
 
-Le système permet à l’utilisateur de définir **comment les adresses doivent être calculées**, puis génère automatiquement la liste correspondante.
+## Automates supportés
 
-## Fonctionnement
+| Automate | Formats |
+|----------|---------|
+| Siemens TIA Portal | CSV, XML |
+| Siemens STEP 7 Manager | SDF |
+| Rockwell Studio 5000 | L5X, CSV |
+| Schneider EcoStruxure Control Expert | XEF, CSV |
+| Mitsubishi GX Works3 | CSV |
+| ABB Automation Builder | CSV |
 
-Le moteur repose sur trois éléments principaux :
 
-* **FormulaEngine** : interprète et valide les formules.
-* **FormulaConfig** : gère les paramètres de chaque catégorie.
-* **AddressGenerator** : génère les adresses à partir de la configuration et des formules.
-* ExportManager : qui sert fait une exportation vers le format pour l'ajout dans votre logiciel de travail 
+## Format de saisie
 
-L'ensemble fonctionne indépendamment de l'interface graphique et peut donc être utilisé dans différentes applications.
+```
+[INPUT]
+nom_variable : commentaire
+autre_variable : commentaire
 
-## Des adresses entièrement configurables
-
-Chaque catégorie peut définir son propre :
-
-* préfixe  ;
-* adresse de départ ;
-* mode d'adressage ;
-* formule de calcul.
-
-Par exemple, une configuration peut produire automatiquement :
-
-```text
-E0.0
-E0.1
-E0.2
-E0.3
-E0.4
-E0.5
-E0.6
-E0.7
-E1.0
-E1.1
-...
+[OUTPUT]
+sortie_1 : commentaire
 ```
 
-## Un système basé sur des formules
+## Architecture
 
-Les adresses sont générées à partir de formules simples utilisant notamment :
-
-* `+`
-* `-`
-* `*`
-* `/`
-* `%`
-* `()`
-* `n`, représentant l'index courant.
-
-Les formules peuvent également utiliser les informations liées aux entrées et sorties afin d'adapter automatiquement les calculs au contexte de génération.
-
-Exemple :
-
-```text
-X = (n - (n % 8)) / 8
-Y = n % 8
+```
+scripts/
+├── core/          (classes pures, sans DOM)
+│   ├── FormulaEngine.js
+│   ├── FormulaConfig.js
+│   ├── AddressGenerator.js
+│   ├── ItemNmenique.js
+│   └── ExportManager.js
+└── ui/            (classes d'interface)
+    ├── helpers.js
+    ├── Zone1_ui.js
+    ├── Zone2_ui.js
+    ├── Zone3_ui.js
+    └── App_ui.js
 ```
 
-permet de répartir automatiquement les adresses sur plusieurs groupes de 8 éléments.
+## Technologies
 
-## Validation intégrée
-
-Avant qu'une formule soit utilisée, le moteur vérifie qu'elle respecte les règles définies.
-
-Il s'assure notamment que :
-
-* la formule est correctement écrite ;
-* seules les variables autorisées sont utilisées ;
-* seuls les opérateurs disponibles sont acceptés ;
-* le résultat est un entier ;
-* le résultat n'est pas négatif.
-
-En cas de problème, le système retourne une erreur permettant d'identifier clairement la formule concernée.
-
-## Pensé pour évoluer
-
-Le moteur est conçu pour être facilement extensible.
-
-De nouvelles catégories peuvent être ajoutées sans modifier le fonctionnement principal du système. Il devient ainsi possible d'étendre progressivement le générateur à différents types d'adresses PLC.
-
-La configuration peut également être conservée afin de permettre à l'utilisateur de retrouver ses paramètres lors d'une prochaine utilisation.
-
-## Indépendant de l'interface
-
-Le moteur ne dépend d'aucune interface graphique.
-
-Il peut ainsi être intégré dans :
-
-* une application web ;
-* un configurateur PLC ;
-* un outil de génération ;
-* une interface industrielle ;
-* ou toute autre application JavaScript.
-
-## Objectif du projet
-
-L'idée est de fournir un **petit moteur de génération d'adresses PLC flexible, simple et réutilisable**.
-
-L'utilisateur définit les règles de calcul une seule fois, et le système se charge ensuite de transformer ces règles en une liste d'adresses PLC cohérentes et valides.
-
-**En résumé :**
-
-> Une configuration + des formules → une génération automatique d'adresses PLC.
+- HTML5 / CSS3 / JavaScript ES6+
+- Aucune dépendance externe
+- 100% côté client (navigateur)
